@@ -7,6 +7,8 @@ from datetime import datetime
 FEEDS = [
     "https://news.google.com/rss/search?q=量子コンピュータ&hl=ja&gl=JP&ceid=JP:ja",
     "https://news.google.com/rss/search?q=quantum+computing&hl=en&gl=US&ceid=US:en",
+    "https://news.google.com/rss/search?q=半導体+アドバンストパッケージング&hl=ja&gl=JP&ceid=JP:ja",
+    "https://news.google.com/rss/search?q=advanced+packaging+semiconductor&hl=en&gl=US&ceid=US:en",
 ]
 
 def fetch_articles():
@@ -33,7 +35,7 @@ def summarize(articles):
         max_tokens=1024,
         messages=[{
             "role": "user",
-            "content": f"以下の量子コンピュータ関連ニュースを日本語で簡潔に要約してください。各記事を2〜3文でまとめ、箇条書きにしてください。\n\n{text}"
+            "content": f"以下のニュースを日本語で簡潔に要約してください。量子コンピュータ関連と半導体アドバンストパッケージング関連に分けて、各記事を2〜3文でまとめ、箇条書きにしてください。\n\n{text}"
         }]
     )
     return message.content[0].text
