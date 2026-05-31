@@ -1,4 +1,4 @@
-name: Daily Quantum News
+name: Daily News
 
 on:
   schedule:
