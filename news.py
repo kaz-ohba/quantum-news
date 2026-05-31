@@ -8,11 +8,15 @@ from datetime import datetime
 QUANTUM_FEEDS = [
     "https://news.google.com/rss/search?q=量子コンピュータ&hl=ja&gl=JP&ceid=JP:ja",
     "https://news.google.com/rss/search?q=quantum+computing&hl=en&gl=US&ceid=US:en",
+    "https://feeds.feedburner.com/IeeeSpectrum",
+    "https://rss.arxiv.org/rss/quant-ph",
 ]
 
 PACKAGING_FEEDS = [
     "https://news.google.com/rss/search?q=半導体+アドバンストパッケージング&hl=ja&gl=JP&ceid=JP:ja",
     "https://news.google.com/rss/search?q=advanced+packaging+semiconductor&hl=en&gl=US&ceid=US:en",
+    "https://semiengineering.com/feed/",
+    "https://www.eetimes.com/feed/",
 ]
 
 # 配信先メールアドレスをここに追加する
@@ -50,16 +54,25 @@ def summarize(articles, topic):
     )
     return message.content[0].text
 
-def send_email(quantum_summary, packaging_summary):
+def send_email(quantum_summary, packaging_summary, quantum_articles, packaging_articles):
     today = datetime.now().strftime("%Y/%m/%d")
+
+    quantum_links = "\n".join([f"・{a['title']}\n  {a['link']}" for a in quantum_articles])
+    packaging_links = "\n".join([f"・{a['title']}\n  {a['link']}" for a in packaging_articles])
 
     body = f"""量子コンピュータ・半導体パッケージング ニュースダイジェスト ({today})
 
 === 量子コンピュータ ニュース ===
 {quantum_summary}
 
+【元記事】
+{quantum_links}
+
 === 半導体アドバンストパッケージング ニュース ===
 {packaging_summary}
+
+【元記事】
+{packaging_links}
 """
 
     msg = MIMEText(body, "plain", "utf-8")
@@ -81,5 +94,5 @@ if __name__ == "__main__":
     packaging_summary = summarize(packaging_articles, "半導体アドバンストパッケージング")
 
     print("メール送信中...")
-    send_email(quantum_summary, packaging_summary)
+    send_email(quantum_summary, packaging_summary, quantum_articles, packaging_articles)
     print("完了！")
