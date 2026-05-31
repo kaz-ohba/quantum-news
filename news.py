@@ -1,6 +1,8 @@
 import feedparser
 import anthropic
 import os
+import smtplib
+from email.mime.text import MIMEText
 from datetime import datetime
 
 QUANTUM_FEEDS = [
@@ -11,6 +13,12 @@ QUANTUM_FEEDS = [
 PACKAGING_FEEDS = [
     "https://news.google.com/rss/search?q=半導体+アドバンストパッケージング&hl=ja&gl=JP&ceid=JP:ja",
     "https://news.google.com/rss/search?q=advanced+packaging+semiconductor&hl=en&gl=US&ceid=US:en",
+]
+
+# 配信先メールアドレスをここに追加する
+TO_ADDRESSES = [
+    "ohba.kazuhiro@gmail.com",
+    "kazuhiro.oba.ti@icloud.com",
 ]
 
 def fetch_articles(feeds, max_per_feed=5):
@@ -42,17 +50,36 @@ def summarize(articles, topic):
     )
     return message.content[0].text
 
+def send_email(quantum_summary, packaging_summary):
+    today = datetime.now().strftime("%Y/%m/%d")
+
+    body = f"""量子コンピュータ・半導体パッケージング ニュースダイジェスト ({today})
+
+=== 量子コンピュータ ニュース ===
+{quantum_summary}
+
+=== 半導体アドバンストパッケージング ニュース ===
+{packaging_summary}
+"""
+
+    msg = MIMEText(body, "plain", "utf-8")
+    msg["Subject"] = f"【技術ニュース】{today}"
+    msg["From"] = os.environ["GMAIL_ADDRESS"]
+    msg["To"] = ", ".join(TO_ADDRESSES)
+
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+        smtp.login(os.environ["GMAIL_ADDRESS"], os.environ["GMAIL_APP_PASSWORD"])
+        smtp.sendmail(os.environ["GMAIL_ADDRESS"], TO_ADDRESSES, msg.as_string())
+
 if __name__ == "__main__":
-    print("=== 量子コンピュータ ニュース（10件）===")
+    print("量子コンピュータ記事を取得中...")
     quantum_articles = fetch_articles(QUANTUM_FEEDS)
-    print(f"{len(quantum_articles)}件取得。要約中...")
     quantum_summary = summarize(quantum_articles, "量子コンピュータ")
-    print(quantum_summary)
 
-    print("\n=== 半導体アドバンストパッケージング ニュース（10件）===")
+    print("半導体パッケージング記事を取得中...")
     packaging_articles = fetch_articles(PACKAGING_FEEDS)
-    print(f"{len(packaging_articles)}件取得。要約中...")
     packaging_summary = summarize(packaging_articles, "半導体アドバンストパッケージング")
-    print(packaging_summary)
 
-    print("\n完了！")
+    print("メール送信中...")
+    send_email(quantum_summary, packaging_summary)
+    print("完了！")
