@@ -62,15 +62,20 @@ def summarize(articles, topic):
     return message.content[0].text
 
 def build_section(title, summary, articles):
+    summary_html = "".join([
+        f'<p style="margin:8px 0; line-height:1.7;">{line}</p>'
+        if line.strip() else ""
+        for line in summary.split("\n")
+    ])
     links_html = "\n".join([
-        f'<li><a href="{a["link"]}">{a["title"]}</a></li>'
+        f'<li style="margin:6px 0;"><a href="{a["link"]}" style="color:#1a73e8;">{a["title"]}</a></li>'
         for a in articles
     ])
     return f"""
 <h2 style="color:#1a73e8; border-bottom:2px solid #1a73e8; padding-bottom:6px;">{title}</h2>
-<p style="white-space:pre-wrap;">{summary}</p>
-<h3 style="color:#555;">元記事</h3>
-<ul>
+{summary_html}
+<h3 style="color:#555; margin-top:16px;">元記事</h3>
+<ul style="padding-left:20px;">
 {links_html}
 </ul>
 """
