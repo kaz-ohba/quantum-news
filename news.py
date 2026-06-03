@@ -3,6 +3,7 @@ import anthropic
 import os
 import smtplib
 from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from datetime import datetime
 
 QUANTUM_FEEDS = [
@@ -30,11 +31,6 @@ TO_ADDRESSES = [
     "ohba.kazuhiro@gmail.com",
     "kazuhiro.oba.ti@icloud.com",
 ]
-
-def shorten_url(url, max_length=60):
-    if len(url) <= max_length:
-        return url
-    return url[:max_length] + "..."
 
 def fetch_articles(feeds, max_per_feed=5):
     articles = []
@@ -65,39 +61,41 @@ def summarize(articles, topic):
     )
     return message.content[0].text
 
+def build_section(title, summary, articles):
+    links_html = "\n".join([
+        f'<li><a href="{a["link"]}">{a["title"]}</a></li>'
+        for a in articles
+    ])
+    return f"""
+<h2 style="color:#1a73e8; border-bottom:2px solid #1a73e8; padding-bottom:6px;">{title}</h2>
+<p style="white-space:pre-wrap;">{summary}</p>
+<h3 style="color:#555;">元記事</h3>
+<ul>
+{links_html}
+</ul>
+"""
+
 def send_email(quantum_summary, packaging_summary, photonics_summary,
                quantum_articles, packaging_articles, photonics_articles):
     today = datetime.now().strftime("%Y/%m/%d")
 
-    quantum_links = "\n".join([f"・{a['title']}\n  {shorten_url(a['link'])}" for a in quantum_articles])
-    packaging_links = "\n".join([f"・{a['title']}\n  {shorten_url(a['link'])}" for a in packaging_articles])
-    photonics_links = "\n".join([f"・{a['title']}\n  {shorten_url(a['link'])}" for a in photonics_articles])
-
-    body = f"""量子・半導体・光電融合 ニュースダイジェスト ({today})
-
-=== 量子コンピュータ ニュース ===
-{quantum_summary}
-
-【元記事】
-{quantum_links}
-
-=== 半導体アドバンストパッケージング ニュース ===
-{packaging_summary}
-
-【元記事】
-{packaging_links}
-
-=== 光電融合・シリコンフォトニクス ニュース ===
-{photonics_summary}
-
-【元記事】
-{photonics_links}
+    html_body = f"""
+<html>
+<body style="font-family:sans-serif; max-width:700px; margin:auto; padding:20px;">
+<h1 style="color:#333;">量子・半導体・光電融合 ニュースダイジェスト</h1>
+<p style="color:#888;">{today}</p>
+{build_section("量子コンピュータ ニュース", quantum_summary, quantum_articles)}
+{build_section("半導体アドバンストパッケージング ニュース", packaging_summary, packaging_articles)}
+{build_section("光電融合・シリコンフォトニクス ニュース", photonics_summary, photonics_articles)}
+</body>
+</html>
 """
 
-    msg = MIMEText(body, "plain", "utf-8")
+    msg = MIMEMultipart("alternative")
     msg["Subject"] = f"【技術ニュース】{today}"
     msg["From"] = os.environ["GMAIL_ADDRESS"]
     msg["To"] = ", ".join(TO_ADDRESSES)
+    msg.attach(MIMEText(html_body, "html", "utf-8"))
 
     with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
         smtp.login(os.environ["GMAIL_ADDRESS"], os.environ["GMAIL_APP_PASSWORD"])
