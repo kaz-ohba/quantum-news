@@ -44,44 +44,41 @@ def fetch_articles(feeds, max_per_feed=5):
             })
     return articles[:10]
 
-def summarize(articles, topic):
-    text = "\n\n".join([
-        f"{i+1}. {a['title']}\n{a['summary']}"
-        for i, a in enumerate(articles)
-    ])
-
+def summarize_each(articles, topic):
+    results = []
     client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
-    message = client.messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=1024,
-        messages=[{
-            "role": "user",
-            "content": f"以下の{topic}関連ニュースを日本語で簡潔に要約してください。各記事を2〜3文でまとめ、箇条書きにしてください。\n\n{text}"
-        }]
-    )
-    return message.content[0].text
+    for a in articles:
+        message = client.messages.create(
+            model="claude-sonnet-4-6",
+            max_tokens=200,
+            messages=[{
+                "role": "user",
+                "content": f"以下の{topic}関連ニュースを日本語で2〜3文に要約してください。\n\nタイトル: {a['title']}\n内容: {a['summary']}"
+            }]
+        )
+        results.append({
+            "title": a["title"],
+            "link": a["link"],
+            "summary": message.content[0].text.strip(),
+        })
+    return results
 
-def build_section(title, summary, articles):
-    summary_html = "".join([
-        f'<p style="margin:8px 0; line-height:1.7;">{line}</p>'
-        if line.strip() else ""
-        for line in summary.split("\n")
-    ])
-    links_html = "\n".join([
-        f'<li style="margin:6px 0;"><a href="{a["link"]}" style="color:#1a73e8;">{a["title"]}</a></li>'
-        for a in articles
+def build_section(title, summarized_articles):
+    items_html = "\n".join([
+        f"""<li style="margin:12px 0; line-height:1.7;">
+<a href="{a['link']}" style="color:#1a73e8; font-weight:bold;">{a['title']}</a><br>
+{a['summary']}
+</li>"""
+        for a in summarized_articles
     ])
     return f"""
 <h2 style="color:#1a73e8; border-bottom:2px solid #1a73e8; padding-bottom:6px;">{title}</h2>
-{summary_html}
-<h3 style="color:#555; margin-top:16px;">元記事</h3>
 <ul style="padding-left:20px;">
-{links_html}
+{items_html}
 </ul>
 """
 
-def send_email(quantum_summary, packaging_summary, photonics_summary,
-               quantum_articles, packaging_articles, photonics_articles):
+def send_email(sections_html):
     today = datetime.now().strftime("%Y/%m/%d")
 
     html_body = f"""
@@ -89,9 +86,7 @@ def send_email(quantum_summary, packaging_summary, photonics_summary,
 <body style="font-family:sans-serif; max-width:700px; margin:auto; padding:20px;">
 <h1 style="color:#333;">量子・半導体・光電融合 ニュースダイジェスト</h1>
 <p style="color:#888;">{today}</p>
-{build_section("量子コンピュータ ニュース", quantum_summary, quantum_articles)}
-{build_section("半導体アドバンストパッケージング ニュース", packaging_summary, packaging_articles)}
-{build_section("光電融合・シリコンフォトニクス ニュース", photonics_summary, photonics_articles)}
+{sections_html}
 </body>
 </html>
 """
@@ -107,19 +102,24 @@ def send_email(quantum_summary, packaging_summary, photonics_summary,
         smtp.sendmail(os.environ["GMAIL_ADDRESS"], TO_ADDRESSES, msg.as_string())
 
 if __name__ == "__main__":
-    print("量子コンピュータ記事を取得中...")
+    print("量子コンピュータ記事を取得・要約中...")
     quantum_articles = fetch_articles(QUANTUM_FEEDS)
-    quantum_summary = summarize(quantum_articles, "量子コンピュータ")
+    quantum_summarized = summarize_each(quantum_articles, "量子コンピュータ")
 
-    print("半導体パッケージング記事を取得中...")
+    print("半導体パッケージング記事を取得・要約中...")
     packaging_articles = fetch_articles(PACKAGING_FEEDS)
-    packaging_summary = summarize(packaging_articles, "半導体アドバンストパッケージング")
+    packaging_summarized = summarize_each(packaging_articles, "半導体アドバンストパッケージング")
 
-    print("光電融合・シリコンフォトニクス記事を取得中...")
+    print("光電融合・シリコンフォトニクス記事を取得・要約中...")
     photonics_articles = fetch_articles(PHOTONICS_FEEDS)
-    photonics_summary = summarize(photonics_articles, "光電融合・シリコンフォトニクス")
+    photonics_summarized = summarize_each(photonics_articles, "光電融合・シリコンフォトニクス")
+
+    sections_html = (
+        build_section("量子コンピュータ ニュース", quantum_summarized) +
+        build_section("半導体アドバンストパッケージング ニュース", packaging_summarized) +
+        build_section("光電融合・シリコンフォトニクス ニュース", photonics_summarized)
+    )
 
     print("メール送信中...")
-    send_email(quantum_summary, packaging_summary, photonics_summary,
-               quantum_articles, packaging_articles, photonics_articles)
+    send_email(sections_html)
     print("完了！")
