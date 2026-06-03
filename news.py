@@ -19,11 +19,22 @@ PACKAGING_FEEDS = [
     "https://www.eetimes.com/feed/",
 ]
 
-# 配信先メールアドレスをここに追加する
+PHOTONICS_FEEDS = [
+    "https://news.google.com/rss/search?q=光電融合&hl=ja&gl=JP&ceid=JP:ja",
+    "https://news.google.com/rss/search?q=シリコンフォトニクス&hl=ja&gl=JP&ceid=JP:ja",
+    "https://news.google.com/rss/search?q=silicon+photonics&hl=en&gl=US&ceid=US:en",
+    "https://news.google.com/rss/search?q=optical+electrical+convergence&hl=en&gl=US&ceid=US:en",
+]
+
 TO_ADDRESSES = [
     "ohba.kazuhiro@gmail.com",
     "kazuhiro.oba.ti@icloud.com",
 ]
+
+def shorten_url(url, max_length=60):
+    if len(url) <= max_length:
+        return url
+    return url[:max_length] + "..."
 
 def fetch_articles(feeds, max_per_feed=5):
     articles = []
@@ -54,13 +65,15 @@ def summarize(articles, topic):
     )
     return message.content[0].text
 
-def send_email(quantum_summary, packaging_summary, quantum_articles, packaging_articles):
+def send_email(quantum_summary, packaging_summary, photonics_summary,
+               quantum_articles, packaging_articles, photonics_articles):
     today = datetime.now().strftime("%Y/%m/%d")
 
-    quantum_links = "\n".join([f"・{a['title']}\n  {a['link']}" for a in quantum_articles])
-    packaging_links = "\n".join([f"・{a['title']}\n  {a['link']}" for a in packaging_articles])
+    quantum_links = "\n".join([f"・{a['title']}\n  {shorten_url(a['link'])}" for a in quantum_articles])
+    packaging_links = "\n".join([f"・{a['title']}\n  {shorten_url(a['link'])}" for a in packaging_articles])
+    photonics_links = "\n".join([f"・{a['title']}\n  {shorten_url(a['link'])}" for a in photonics_articles])
 
-    body = f"""量子コンピュータ・半導体パッケージング ニュースダイジェスト ({today})
+    body = f"""量子・半導体・光電融合 ニュースダイジェスト ({today})
 
 === 量子コンピュータ ニュース ===
 {quantum_summary}
@@ -73,6 +86,12 @@ def send_email(quantum_summary, packaging_summary, quantum_articles, packaging_a
 
 【元記事】
 {packaging_links}
+
+=== 光電融合・シリコンフォトニクス ニュース ===
+{photonics_summary}
+
+【元記事】
+{photonics_links}
 """
 
     msg = MIMEText(body, "plain", "utf-8")
@@ -93,6 +112,11 @@ if __name__ == "__main__":
     packaging_articles = fetch_articles(PACKAGING_FEEDS)
     packaging_summary = summarize(packaging_articles, "半導体アドバンストパッケージング")
 
+    print("光電融合・シリコンフォトニクス記事を取得中...")
+    photonics_articles = fetch_articles(PHOTONICS_FEEDS)
+    photonics_summary = summarize(photonics_articles, "光電融合・シリコンフォトニクス")
+
     print("メール送信中...")
-    send_email(quantum_summary, packaging_summary, quantum_articles, packaging_articles)
+    send_email(quantum_summary, packaging_summary, photonics_summary,
+               quantum_articles, packaging_articles, photonics_articles)
     print("完了！")
