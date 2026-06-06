@@ -30,6 +30,7 @@ PHOTONICS_FEEDS = [
 TO_ADDRESSES = [
     "ohba.kazuhiro@gmail.com",
     "kazuhiro.oba.ti@icloud.com",
+    "a.memezawa@gmail.com",
 ]
 
 def fetch_articles(feeds, max_per_feed=5):
@@ -84,7 +85,7 @@ def send_email(sections_html):
     html_body = f"""
 <html>
 <body style="font-family:sans-serif; max-width:700px; margin:auto; padding:20px;">
-<h1 style="color:#333;">量子・半導体・光電融合 ニュースダイジェスト</h1>
+<h1 style="color:#333;">量子・先端パッケージング・光電融合 ニュースダイジェスト</h1>
 <p style="color:#888;">{today}</p>
 {sections_html}
 </body>
@@ -92,7 +93,7 @@ def send_email(sections_html):
 """
 
     msg = MIMEMultipart("alternative")
-    msg["Subject"] = f"【技術ニュース】{today}"
+    msg["Subject"] = f"【技術アップデート】{today}"
     msg["From"] = os.environ["GMAIL_ADDRESS"]
     msg["To"] = ", ".join(TO_ADDRESSES)
     msg.attach(MIMEText(html_body, "html", "utf-8"))
